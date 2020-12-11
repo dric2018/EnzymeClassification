@@ -8,7 +8,7 @@ import pandas as pd
 import transformers
 import os
 from transformers import AutoTokenizer, AutoModel
-
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from datasets import EnzymeDataset
 import argparse
 import sys 
@@ -24,26 +24,33 @@ parser.add_argument('--data_path', default=data_dir,  type=str, help='data sourc
 
 
 class EnzymeClassifier(pl.LightningModule):
-    def __init__(self, input_size, hidden_size, max_seq_len=512, n_layers=10, lr=5e-3, n_classes=20,device='cuda', *args, **kwargs):
+    def __init__(self, input_size, hidden_size, max_seq_len=512, n_layers=10, lr=5e-3,n_letters=24, n_classes=20, embed_size=512,device='cuda', *args, **kwargs):
         super(EnzymeClassifier, self).__init__()
         self.save_hyperparameters()
 
-        self.lstm = nn.LSTM(self.hparams.input_size, 
+        self.embedding = nn.Embedding(self.hparams.n_letters, self.hparams.embed_size)
+
+        self.lstm = nn.LSTM(self.hparams.embed_size, 
                             self.hparams.hidden_size,
                             self.hparams.n_layers,
                             batch_first=True, 
-                            bidirectional=True)
+                            bidirectional=False)
 
 
-        self.fc = nn.Linear(256, self.hparams.n_classes)
+        self.fc = nn.Linear(128, self.hparams.n_classes)
 
 
     def forward(self, x):
-        h0 = torch.zeros(self.hparams.n_layers*2, x.size(0), self.hparams.hidden_size)
-        c0 = torch.zeros(self.hparams.n_layers*2, x.size(0), self.hparams.hidden_size)
-        out, _ = self.lstm(x, (h0.to(self.hparams.device), c0.to(self.hparams.device)))
+        h0 = torch.zeros(self.hparams.n_layers, x.size(0), self.hparams.hidden_size)
+        c0 = torch.zeros(self.hparams.n_layers, x.size(0), self.hparams.hidden_size)
+
+        embed = self.embedding(x.unsqueeze(0))
+        print(embed.shape)
+        packed = pack_padded_sequence(embed, [self.hparams.input_size], batch_first=False)
+        print(packed)
+        out, _ = self.lstm(packed, (h0.to(self.hparams.device), c0.to(self.hparams.device)))
         out = out.reshape(out.shape[0], -1)
-        #print("shape before fc",out.shape)
+        print("shape before fc",out.shape)
 
         return self.fc(out)
 
@@ -80,7 +87,7 @@ class EnzymeClassifier(pl.LightningModule):
         opt = torch.optim.Adam(params=self.parameters(), lr=self.hparams.lr)
 
         return opt
-        
+
 
     def test_step(self, batch, batch_idx):
         pass

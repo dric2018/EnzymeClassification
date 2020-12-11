@@ -42,7 +42,7 @@ class EnzymeDataset(Dataset):
             pad_len = max_seq_len - len(sequence)
             sequence += "".join("A" * pad_len)
 
-        int_seq = torch.tensor([[mapping[l] for l in sequence]], dtype=torch.float)
+        int_seq = torch.tensor([[mapping[l] for l in sequence]], dtype=torch.long)
 
         return int_seq
 

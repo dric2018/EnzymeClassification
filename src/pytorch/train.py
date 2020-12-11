@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from pytorch_lightning import loggers, callbacks, seed_everything, Trainer
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
@@ -13,6 +14,7 @@ from datasets import EnzymeDataset
 from models import EnzymeClassifier
 import argparse
 import sys 
+import gc
 
 from sklearn.model_selection import KFold, StratifiedKFold
 
@@ -31,7 +33,7 @@ parser.add_argument('--n_folds', default=5,  type=int, help='number of cross val
 parser.add_argument('--lr', type=float, default=5e-3,  help='Learning rate for model training')
 parser.add_argument('--gpus', type=int, default=1,  help='Number of gpus to use for training')
 parser.add_argument('--save_models_to', type=str, help='Directory to save trained models to')
-
+parser.add_argument('--seed_value', default=60,  type=int, help='seed for reproducibility')
 
 
 
@@ -39,7 +41,7 @@ def make_folds(data:pd.DataFrame, args, n_folds = 10, target_col='label'):
 
     data['fold'] = 0
 
-    fold = StratifiedKFold(n_splits = n_folds, random_state=args.seed_value)
+    fold = StratifiedKFold(n_splits = n_folds, shuffle=True, random_state=args.seed_value)
     for i, (tr, vr) in enumerate(fold.split(data, data[target_col])):
         data.loc[vr, 'fold'] = i
 
@@ -58,7 +60,7 @@ def run_fold(fold, train_df, args, path=models_dir):
     train_ds = EnzymeDataset(df=fold_train, task='train', max_seq_len=MAX_SEQ_LEN)
     val_ds = EnzymeDataset(df=fold_val, task='train', max_seq_len=MAX_SEQ_LEN)
 
-    trainloader = DataLoader(train_ds, batch_size=args.train_batch_size, shuffle=True , num_workers=os.cpu_count())
+    trainloader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True , num_workers=os.cpu_count())
     validloader = DataLoader(val_ds, batch_size=args.val_batch_size, shuffle=False , num_workers=os.cpu_count())
 
     del train_ds
@@ -100,6 +102,8 @@ def run_fold(fold, train_df, args, path=models_dir):
 if __name__=='__main__':
     
     args = parser.parse_args()
+    _ = seed_everything(args.seed_value)
+    train = pd.read_csv(args.data_path)
     train, n_folds = make_folds(n_folds=5, data=train, args=args, target_col='TARGET')
 
     # traiining loop
