@@ -37,7 +37,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default=DATA_PATH, help='data directory')
 
 
-def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=256, lr=1e-3):
+def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=256, lr=1e-3, show_summary=True):
 
     inp = tf.keras.layers.Input([None])
     # embed imput to an embedding dimension
@@ -65,7 +65,7 @@ def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=25
     embeds = embedding_layer(inp)
     features = bidirectional_layer(embeds)
     features = fc1(features)
-    if dropout:
+    if add_dropout:
         features = dropout_layer(features)
     features = fc2(features)
     features = fc3(features)
@@ -76,11 +76,12 @@ def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=25
 
     # compile model
     opt = tf.keras.optimizers.SGD(learning_rate=lr)
-    model.compile(loss='sparse_categorical_crossentropy', 
+    model.compile(loss='categorical_crossentropy', 
                     optimizer=opt,
                     metrics=['accuracy'])
     
-    print(model.summary())
+    if show_summary:
+        print(model.summary())
 
     return model
 
@@ -88,7 +89,7 @@ def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=25
 
 def main(args):
 
-    model = get_model()
+    model = create_model()
 
 
 if __name__=='__main__':
