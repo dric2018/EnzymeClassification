@@ -40,10 +40,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default=DATA_PATH, help='data directory')
 parser.add_argument('--train_bs', default=128, type=int, help='training batch size')
 parser.add_argument('--validation_bs', default=64, type=int, help='validation batch size')
-parser.add_argument('--n_folds', default=10, type=int, help='Number of splits for k-fold cross-validation')
-parser.add_argument('--lr', default=1e-3, type=float, help='training learning rate')
+parser.add_argument('--n_folds', default=5, type=int, help='Number of splits for k-fold cross-validation')
+parser.add_argument('--lr', default=2e-3, type=float, help='training learning rate')
 parser.add_argument('--ckpt_dir', default=MODELS_PATH, type=str, help='Checkpoint directory')
-parser.add_argument('--num_epochs', default=15, type=int, help='Number of training epochs')
+parser.add_argument('--num_epochs', default=5, type=int, help='Number of training epochs')
 parser.add_argument('--log_dir', default=LOGS_PATH, type=str, help='log directory')
 
 
@@ -73,13 +73,11 @@ def train_fn(args):
                             log_dir=args.log_dir,
                             train_bs=args.train_bs,
                             val_bs=args.validation_bs)
-        print(metrics)
 
-        sys.exit()
-        val_acc = metrics['val_acc']
+        val_acc = metrics['val_accuracy']
         val_loss = metrics['val_loss']
-        train_acc =metrics['train_acc']
-        train_loss = metrics['train_loss']
+        train_acc =metrics['accuracy']
+        train_loss = metrics['loss']
         
         print('')
         print('*'*75)

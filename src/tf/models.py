@@ -75,7 +75,7 @@ def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=25
     model = tf.keras.Model(inputs=inp, outputs=logits)
 
     # compile model
-    opt = tf.keras.optimizers.SGD(learning_rate=lr)
+    opt = tf.keras.optimizers.Adam(learning_rate=lr)
     model.compile(loss='categorical_crossentropy', 
                     optimizer=opt,
                     metrics=['accuracy'])

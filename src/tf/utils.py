@@ -105,10 +105,10 @@ def run_fold(fold_num, model, dataset, save_ckpt_to, epochs, data_dir, log_dir='
     seq_to_text_file(save_file_to=os.path.join(data_dir, f'validation_data_{fold_num}.txt'), sequences=validation.SEQUENCE)
     
     # callbacks 
-    model_name = "enzyme_classifier"
+    model_name = f"enzyme_classifier-{fold_num}.h5"
     ckpt_cb_1 = tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(save_ckpt_to, model_name),
                                                  save_weights_only=True,
-                                                 monitor = 'val_acc',
+                                                 monitor = 'val_accuracy',
                                                  save_best_only=True,
                                                  mode="max", 
                                                  verbose=1)
@@ -121,13 +121,13 @@ def run_fold(fold_num, model, dataset, save_ckpt_to, epochs, data_dir, log_dir='
                                                   verbose=1)
 
     lr_reducer = tf.keras.callbacks.ReduceLROnPlateau( monitor='val_loss', 
-                                                    factor=0.1, patience=10, 
+                                                    factor=0.1, patience=2, 
                                                     verbose=1,
                                                     mode='auto')
 
-    es = tf.keras.callbacks.EarlyStopping(monitor="val_acc", 
+    es = tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", 
                                             mode="max", 
-                                            patience=10,
+                                            patience=2,
                                             restore_best_weights=True)
 
     tb_cb = tf.keras.callbacks.TensorBoard(
@@ -161,7 +161,7 @@ def run_fold(fold_num, model, dataset, save_ckpt_to, epochs, data_dir, log_dir='
                 callbacks=CALLBACKS)
 
                 
-    return pd.DataFrame(history.history)
+    return history.history #pd.DataFrame(history.history)
 
 
 def test():
@@ -185,7 +185,7 @@ def main(args):
     train['LENGTH'] = train['SEQUENCE'].swifter.progress_bar(enable=True, desc='Computing sequence length').apply(lambda seq: len(seq))
     train['TARGET'] = train['LABEL'].swifter.progress_bar(enable=True, desc='Creating target column').apply(lambda c: int(c.split('class')[-1]))
 
-    _, train = make_folds(dataset=train, n_folds=10, target_col='TARGET')
+    _, train = make_folds(dataset=train, n_folds=5, target_col='TARGET')
     print(train.head())
 
     try:
