@@ -74,10 +74,10 @@ def train_fn(args):
                             train_bs=args.train_bs,
                             val_bs=args.validation_bs)
 
-        val_acc = metrics['val_accuracy']
-        val_loss = metrics['val_loss']
-        train_acc =metrics['accuracy']
-        train_loss = metrics['loss']
+        val_acc = np.array(metrics['val_accuracy']).mean()
+        val_loss = metrics['val_loss'].mean()
+        train_acc = np.array(metrics['accuracy']).mean()
+        train_loss =  np.array(metrics['loss']).mean()
         
         print('')
         print('*'*75)
@@ -89,12 +89,12 @@ def train_fn(args):
         print('-'*75)
         print(f'\t\t Results for Fold {fold}')
         print('*'*75)
-        if metrics['val_logLoss'] < best_logloss:
-            best_logloss = metrics['val_logLoss']
+        if metrics['val_loss'] < best_logloss:
+            best_logloss = metrics['val_loss']
             best_fold = fold
-            avg_log_loss += metrics['val_logLoss']
+            avg_log_loss += metrics['val_loss']
         else:
-            avg_log_loss += metrics['val_logLoss']
+            avg_log_loss += metrics['val_loss']
 
     print(f'[INFO] Training done ! Avg LogLoss : {avg_log_loss / n_folds}')
 

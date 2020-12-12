@@ -37,28 +37,28 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default=DATA_PATH, help='data directory')
 
 
-def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=256, lr=1e-3, show_summary=True):
+def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=200, lr=1e-3, show_summary=True):
 
     inp = tf.keras.layers.Input([None])
     # embed imput to an embedding dimension
     embedding_layer = tf.keras.layers.Embedding(input_dim=len(list(amino_acid_map.keys())), output_dim=embeddings_dim)
     if arch.lower() == 'gru':
-        recurrent_layer = tf.keras.layers.GRU(units=300, dropout=0.2, return_sequences=False)
+        recurrent_layer = tf.keras.layers.GRU(units=200, dropout=0.2, return_sequences=False)
     else:
-        recurrent_layer = tf.keras.layers.LSTM(units=300, dropout=.2, return_sequences=False)
+        recurrent_layer = tf.keras.layers.LSTM(units=200, dropout=.2, return_sequences=False)
     
     # wrap reccurent layer with a bidirectional layer
     bidirectional_layer = tf.keras.layers.Bidirectional(recurrent_layer)
 
     # add fully connected layers
-    fc1 = tf.keras.layers.Dense(units=1024, activation="relu")
-    fc2 = tf.keras.layers.Dense(units=512, activation="relu")
-    fc3 = tf.keras.layers.Dense(units=64, activation="relu")
+    fc1 = tf.keras.layers.Dense(units=500, activation="relu")
+    fc2 = tf.keras.layers.Dense(units=250, activation="relu")
+    fc3 = tf.keras.layers.Dense(units=100, activation="relu")
 
     # output layer 
     output_layer = tf.keras.layers.Dense(units=n_classes, activation="softmax")
 
-    dropout_layer = tf.keras.layers.Dropout(0.3)
+    dropout_layer = tf.keras.layers.Dropout(0.2)
 
     # forward pass
 
