@@ -36,7 +36,6 @@ amino_acid_map = {'A': 0,'B': 1,'C': 2,'D': 3,'E': 4,'F': 5,'G': 6,'H': 7,'I': 8
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default=DATA_PATH, help='data directory')
 
-
 def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=200, lr=1e-3, show_summary=True):
 
     inp = tf.keras.layers.Input([None])

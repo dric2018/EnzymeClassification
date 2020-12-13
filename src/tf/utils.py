@@ -46,30 +46,38 @@ def seq_to_text_file(save_file_to:str, sequences, max_len=MAX_SEQ_LEN):
 
 
 def encode_sequence(text_tensor, label):
-    encoded_text = [ amino_acid_map[e] for e in list(text_tensor.numpy().decode())]
+    try:
+        encoded_text = [ amino_acid_map[e] for e in list(text_tensor.numpy().decode())]
+    except:
+        encoded_text = [ amino_acid_map[e] for e in text_tensor]
     return encoded_text, label
 
 
 def set_encode_map_fn(text, label):
     # py_func doesn't set the shape of the returned tensors.
     encoded_text, label = tf.py_function(encode_sequence, 
-                                       inp=[text, label], 
-                                       Tout=(tf.int64, tf.int64))
+                                    inp=[text, label], 
+                                    Tout=(tf.int64, tf.int64))
     encoded_text.set_shape([None])
     label=tf.one_hot(label,N_CLASSES)
     label.set_shape([N_CLASSES])
-    
+ 
+
     return encoded_text, label
 
 
 def get_data_loader(file,batch_size, labels, task='train'):
     
-    label_data=tf.data.Dataset.from_tensor_slices(labels)
     data_set=tf.data.TextLineDataset(file)
-    data_set=tf.data.Dataset.zip((data_set,label_data))
 
     if task=='train':
+        label_data=tf.data.Dataset.from_tensor_slices(labels)
+        data_set=tf.data.Dataset.zip((data_set,label_data))
         data_set=data_set.repeat()
+        data_set = data_set.shuffle(len(labels))
+    else:
+        label_data=tf.data.Dataset.from_tensor_slices(labels)
+        data_set=tf.data.Dataset.zip((data_set,label_data))
         data_set = data_set.shuffle(len(labels))
 
     data_set=data_set.map(set_encode_map_fn,tf.data.experimental.AUTOTUNE)
@@ -131,7 +139,7 @@ def run_fold(fold_num, model, dataset, save_ckpt_to, epochs, data_dir, log_dir='
                                             restore_best_weights=True)
 
     tb_cb = tf.keras.callbacks.TensorBoard(
-                log_dir=log_dir, histogram_freq=0, write_graph=True,
+                log_dir=log_dir+f'-{fold_num}', histogram_freq=0, write_graph=True,
                 write_images=False)
 
 
@@ -163,13 +171,6 @@ def run_fold(fold_num, model, dataset, save_ckpt_to, epochs, data_dir, log_dir='
                 
     return history.history #pd.DataFrame(history.history)
 
-
-def test():
-    pass
-
-
-def make_predictions():
-    pass
 
 
 

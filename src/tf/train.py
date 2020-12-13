@@ -52,8 +52,8 @@ parser.add_argument('--log_dir', default=LOGS_PATH, type=str, help='log director
 
 def train_fn(args):
     best_fold = 0
-    avg_log_loss = 0.0
-    best_logloss = np.inf
+    avg_acc = 0.0
+    best_acc = -np.inf
 
     dataset = pd.read_csv(os.path.join(args.data_path, 'TrainV1.csv'))
 
@@ -75,7 +75,7 @@ def train_fn(args):
                             val_bs=args.validation_bs)
 
         val_acc = np.array(metrics['val_accuracy']).mean()
-        val_loss = metrics['val_loss'].mean()
+        val_loss = np.array(metrics['val_loss']).mean()
         train_acc = np.array(metrics['accuracy']).mean()
         train_loss =  np.array(metrics['loss']).mean()
         
@@ -89,14 +89,14 @@ def train_fn(args):
         print('-'*75)
         print(f'\t\t Results for Fold {fold}')
         print('*'*75)
-        if metrics['val_loss'] < best_logloss:
-            best_logloss = metrics['val_loss']
+        if val_acc > best_acc:
+            best_acc = val_acc
             best_fold = fold
-            avg_log_loss += metrics['val_loss']
+            avg_acc += val_acc
         else:
-            avg_log_loss += metrics['val_loss']
+            avg_acc = val_acc
 
-    print(f'[INFO] Training done ! Avg LogLoss : {avg_log_loss / n_folds}')
+    print(f'[INFO] Training done ! Avg Acc : {avg_acc / args.n_folds}')
 
 
 
