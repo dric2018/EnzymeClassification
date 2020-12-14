@@ -33,6 +33,7 @@ amino_acid_map = {'A': 0,'B': 1,'C': 2,'D': 3,'E': 4,'F': 5,'G': 6,'H': 7,'I': 8
 # ARGUMENTS PARSER
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default=DATA_PATH, help='data directory')
+parser.add_argument('--n_folds', default=5, type=int, help='Number of splits for k-fold cross-validation')
 
 
 # UTILS
@@ -99,10 +100,11 @@ def make_folds(dataset:pd.DataFrame, n_folds=10, target_col='TARGET'):
 
 
 def run_fold(fold_num, model, dataset, save_ckpt_to, epochs, data_dir, log_dir='../../runs/logs', train_bs=1024, val_bs=512):
-        
+    
+    os.makedirs(save_ckpt_to, exist_ok=True)
 
-    train = dataset[dataset["FOLD"] !=fold_num].reset_index(drop=True)
-    validation = dataset[dataset["FOLD"] ==fold_num].reset_index(drop=True)
+    train = dataset[dataset["FOLD"] !=fold_num].sample(frac=1).reset_index(drop=True)
+    validation = dataset[dataset["FOLD"] ==fold_num].sample(frac=1).reset_index(drop=True)
 
     # get labels 
     train_labels = train.TARGET
@@ -168,7 +170,7 @@ def run_fold(fold_num, model, dataset, save_ckpt_to, epochs, data_dir, log_dir='
                 validation_steps = len(validation) // val_bs,
                 callbacks=CALLBACKS)
 
-                
+    del model            
     return history.history #pd.DataFrame(history.history)
 
 
@@ -185,8 +187,14 @@ def main(args):
     train = pd.read_csv(os.path.join(args.data_path,'Train.csv'))
     train['LENGTH'] = train['SEQUENCE'].swifter.progress_bar(enable=True, desc='Computing sequence length').apply(lambda seq: len(seq))
     train['TARGET'] = train['LABEL'].swifter.progress_bar(enable=True, desc='Creating target column').apply(lambda c: int(c.split('class')[-1]))
+    
+    # drop duplicate sequences 
+    print("[INFO] dataset length before droping duplicates : ", len(train))
+    train = train.drop_duplicates(subset=["SEQUENCE"], keep='first').sample(frac=1).reset_index(drop=True)
+    print("[INFO] dataset length after droping duplicates : ", len(train))
 
-    _, train = make_folds(dataset=train, n_folds=5, target_col='TARGET')
+    # create folds
+    _, train = make_folds(dataset=train, n_folds=args.n_folds, target_col='TARGET')
     print(train.head())
 
     try:

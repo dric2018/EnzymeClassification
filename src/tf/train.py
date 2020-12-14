@@ -58,7 +58,7 @@ def train_fn(args):
     dataset = pd.read_csv(os.path.join(args.data_path, 'TrainV1.csv'))
 
     for fold in range(args.n_folds):
-        model = create_model(show_summary=False, lr=args.lr)
+        model = create_model(show_summary=False, lr=args.lr, manifest_dir=args.ckpt_dir)
 
         print('')
         print('*'*18)
@@ -96,8 +96,11 @@ def train_fn(args):
         else:
             avg_acc = val_acc
 
-    print(f'[INFO] Training done ! Avg Acc : {avg_acc / args.n_folds}')
+        del model
 
+    print()    
+    print(f'[INFO] Training done ! \n(CV-LB) Avg Acc : {avg_acc / args.n_folds}')
+    print(f'[INFO] Best fold : {best_fold}')
 
 
 

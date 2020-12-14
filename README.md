@@ -6,14 +6,14 @@ Given an amino acid sequence, you have to predict which of 20 classes it is from
 # Usage 
 
 ## Hardware specifications
-* Gaming laptop or any computer (e.g workstation) with at least:
->> 1 NVIDIA GPU (VRAM >= 6 GB since I used a GTX 1060 Max-Q)
+### Gaming laptop or any computer (e.g workstation) with at least:
+- 1 NVIDIA GPU (VRAM >= 6 GB since I used a GTX 1060 Max-Q)
 
->> 4 Cores CPU (>= Intent core i5 )
+- 4 Cores CPU (>= Intent core i5 )
 
->> 16 GB of RAM
+- 16 GB of RAM
 
->> 50 GB of free space 
+- 50 GB of free space 
 
 ## Training  
 1 - Tensorflow version 
