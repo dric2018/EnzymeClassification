@@ -9,7 +9,8 @@ from sklearn.model_selection import StratifiedKFold, KFold
 import argparse
 import warnings
 import tensorflow as tf
-
+from tensorflow.keras.utils import plot_model 
+from matplotlib import pyplot as plt
 from utils import get_data_loader
 
 
@@ -42,52 +43,66 @@ parser.add_argument('--manifest_dir', type=str, default=MODELS_PATH, help='Model
 
 
 
-def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=150, lr=1e-3, show_summary=True, manifest_dir=None):
+def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=50, lr=1e-3, show_summary=True, manifest_dir=None):
 
-    inp = tf.keras.layers.Input([None])
+    inp_recurrent = tf.keras.layers.Input([None])
+    inp_conv = tf.keras.layers.Input([MAX_SEQ_LEN])
     # embed imput to an embedding dimension
     embedding_layer = tf.keras.layers.Embedding(input_dim=len(list(amino_acid_map.keys())), output_dim=embeddings_dim)
     if arch.lower() == 'gru':
-        recurrent_layer = tf.keras.layers.GRU(units=256, dropout=0.3, return_sequences=False)
+        recurrent_layer = tf.keras.layers.GRU(units=256, dropout=.1, return_sequences=False)
+    elif arch.lower() == 'lstm':
+        recurrent_layer = tf.keras.layers.LSTM(units=256, dropout=.1, return_sequences=False)
     else:
-        recurrent_layer = tf.keras.layers.LSTM(units=256, dropout=.3, return_sequences=False)
-    
+        conv_layer = tf.keras.layers.Conv1D(128, 1, activation='relu')
+        max_pool_layer = tf.keras.layers.MaxPooling1D(2)
+        recurrent_layer = tf.keras.layers.GRU(units=256, dropout=.01, return_sequences=False)
+        bidirectional_layer = tf.keras.layers.Bidirectional(recurrent_layer)
     # wrap reccurent layer with a bidirectional layer
     bidirectional_layer = tf.keras.layers.Bidirectional(recurrent_layer)
 
-    # add fully connected layers
-    fc1 = tf.keras.layers.Dense(units=512, activation="relu")
-    fc2 = tf.keras.layers.Dense(units=256, activation="relu")
-    fc3 = tf.keras.layers.Dense(units=64, activation="relu")
+    # flatten layer
+    flatten = tf.keras.layers.Flatten()
 
+    # add fully connected layers
+    fc1 = tf.keras.layers.Dense(units=256, activation="relu")
     # output layer 
     output_layer = tf.keras.layers.Dense(units=n_classes, activation="softmax")
 
-    dropout_layer = tf.keras.layers.Dropout(0.3)
+    dropout_layer = tf.keras.layers.Dropout(0.05)
 
     # forward pass
+    if arch.lower() =='cnn':
+        embeds = embedding_layer(inp_conv)
 
-    embeds = embedding_layer(inp)
-    features = bidirectional_layer(embeds)
+        features = conv_layer(embeds)
+        features = max_pool_layer(features)
+        features = bidirectional_layer(features)
+    else:
+        embeds = embedding_layer(inp_recurrent)
+        features = bidirectional_layer(embeds)
+
+    features = flatten(features)
     features = fc1(features)
-    if add_dropout:
-        features = dropout_layer(features)
-    features = fc2(features)
-    features = fc3(features)
+    features = dropout_layer(features)
+  
     # get logits 
-    logits = output_layer(features)
+    logits = dropout_layer( output_layer(features))
 
-    model = tf.keras.Model(inputs=inp, outputs=logits)
+    if arch.lower() =='cnn':
+        model = tf.keras.Model(inputs=inp_conv, outputs=logits)
+    else:
+        model = tf.keras.Model(inputs=inp_recurrent, outputs=logits)
 
     # compile model
     opt = tf.keras.optimizers.Adam(learning_rate=lr)
     model.compile(loss='categorical_crossentropy', 
                     optimizer=opt,
-                    metrics=['accuracy'])
+                    metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
     
     if show_summary:
         model.summary()
-
+        
     try:
         os.makedirs(manifest_dir, exist_ok=True)
 
@@ -97,13 +112,14 @@ def create_model(arch='GRU', n_classes = 20, add_dropout=True, embeddings_dim=15
 
     except:
         pass
+
     return model
 
 
 
 def main(args):
 
-    model = create_model(manifest_dir=args.manifest_dir)
+    model = create_model(manifest_dir=args.manifest_dir, arch='CNN')
 
 
 if __name__=='__main__':

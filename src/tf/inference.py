@@ -58,6 +58,7 @@ parser.add_argument('--files_dest_directory', default=TEST_DATA_DIR, type=str, h
 parser.add_argument('--batch_size', default=16, type=int, help='Batch size for inference')
 parser.add_argument('--dest_dir', default=SUBMISSIONS_DIR, type=str, help='Submissions directory')
 parser.add_argument('--num_epochs', default=5, type=int, help='Number of training epochs')
+parser.add_argument('--arch', default='CNN', type=str, help='Model architecture')
 
 
 # predictions
@@ -112,16 +113,35 @@ def test(args):
         
     
 
-def make_prediction(model, sequences=None, batch_size=1):
-    # encode amino acid sequence
-    encoded_seqs = [encode_sequence(sequence, label=None)[0] for sequence in sequences]
-    d = tf.data.Dataset.from_generator(lambda : encoded_seqs, output_types=(tf.int64))
-    d = d.padded_batch(batch_size, padded_shapes=([None]), drop_remainder=False)
-    # predict corresponding class & get probability
-    model.trainable = False
-    logits = model.predict(d,  verbose=1)
-    classes = [v.argmax() for v in logits]
-    probas = [logits[i][c] for i, c in enumerate(classes)]
+def make_prediction(model, dataset:pd.DataFrame, batch_size=1):
+    sequences = dataset.SEQUENCE
+    try:
+        # encode amino acid sequence
+        encoded_seqs = [encode_sequence(sequence, label=None)[0] for sequence in sequences]
+        d = tf.data.Dataset.from_generator(lambda : encoded_seqs, output_types=(tf.int64))
+        d = d.padded_batch(batch_size, padded_shapes=([None]), drop_remainder=False)
+        # predict corresponding class & get probability
+        model.trainable = False
+        logits = model.predict(d,  verbose=1)
+        classes = [v.argmax() for v in logits]
+        probas = [logits[i][c] for i, c in enumerate(classes)]    
+    
+    except:
+        # encode amino acid sequence
+        dataset['LABEL'] = 0
+        test_labels = dataset['LABEL']
+        seq_to_text_file(save_file_to=os.path.join(DATA_PATH, 'test', f'test_data.txt'), sequences=dataset.SEQUENCE)
+        
+        d = get_data_loader(file=os.path.join(DATA_PATH, 'test', f'test_data.txt'), 
+                            batch_size=batch_size, 
+                            labels=test_labels, 
+                            task='test')
+  
+        # predict corresponding class & get probability
+        model.trainable = False
+        logits = model.predict(d,  verbose=1)
+        classes = [v.argmax() for v in logits]
+        probas = [logits[i][c] for i, c in enumerate(classes)]
 
     return classes, probas
 
@@ -132,14 +152,14 @@ def make_predictions(args):
 
     preds = []
     probas = []
-    model = create_model(show_summary=False)
+    model = create_model(show_summary=False, arch=args.arch)
 
     for num in range(args.n_folds):
         # create model
         model.load_weights(os.path.join(args.ckpt_dir, f'enzyme_classifier-{num}.h5'))
 
         # make prediction
-        classes, probs = make_prediction(model=model, sequences=df.SEQUENCE.tolist(), batch_size=args.batch_size)
+        classes, probs = make_prediction(model=model, dataset=df, batch_size=args.batch_size)
         
         # save prediction to ensemble 
         preds.append(classes)
@@ -165,7 +185,7 @@ def save_submission_file(fn, df, args):
     dest_dir = args.dest_dir
     df[['SEQUENCE_ID', 'LABEL']].to_csv(os.path.join(dest_dir, fn), index=False)
 
-    print(f'[INFO] submission file saved to {dest_dir}...Good luck...fingers crossed !')
+    print(f'[INFO] submission file saved to {dest_dir} as {fn}.\nGood luck...fingers crossed !')
 
 
 if __name__=='__main__':
@@ -183,7 +203,7 @@ if __name__=='__main__':
     test_df['LABEL'] = final_predictions
 
     print(test_df.head())
-    fname = f'enz-GRU-based-n_folds-{args.n_folds}-lr-{args.lr}-tbs-{args.train_bs}-valid_bs-{args.validation_bs}-n_epochs-{args.num_epochs}.csv'
+    fname = f'enz-{args.arch}-based-n_folds-{args.n_folds}-lr-{args.lr}-tbs-{args.train_bs}-valid_bs-{args.validation_bs}-n_epochs-{args.num_epochs}.csv'
     save_submission_file(fn=fname, df=test_df, args=args)
     
     #print(f'\n[INFO] Predicted class {c} with {pr:.3f}% confidence')

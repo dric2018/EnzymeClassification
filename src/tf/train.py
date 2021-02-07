@@ -45,6 +45,7 @@ parser.add_argument('--lr', default=2e-3, type=float, help='training learning ra
 parser.add_argument('--ckpt_dir', default=MODELS_PATH, type=str, help='Checkpoint directory')
 parser.add_argument('--num_epochs', default=5, type=int, help='Number of training epochs')
 parser.add_argument('--log_dir', default=LOGS_PATH, type=str, help='log directory')
+parser.add_argument('--arch', default='CNN', type=str, help='Model architecture')
 
 
 
@@ -53,18 +54,65 @@ parser.add_argument('--log_dir', default=LOGS_PATH, type=str, help='log director
 def train_fn(args):
     best_fold = 0
     avg_acc = 0.0
-    best_acc = -np.inf
+    best_acc = 0.0
 
     dataset = pd.read_csv(os.path.join(args.data_path, 'TrainV1.csv'))
 
-    for fold in range(args.n_folds):
-        model = create_model(show_summary=False, lr=args.lr, manifest_dir=args.ckpt_dir)
+    if args.n_folds >=2:
+        for fold in range(args.n_folds):
+            model = create_model(show_summary=False, lr=args.lr, manifest_dir=args.ckpt_dir, arch=args.arch)
+
+            print('')
+            print('*'*18)
+            print(f'Training on fold {fold}')
+            print('*'*18)
+            metrics = run_fold(fold_num=fold, 
+                                model=model,
+                                dataset = dataset,
+                                save_ckpt_to=args.ckpt_dir,
+                                epochs=args.num_epochs,
+                                data_dir=args.data_path,
+                                log_dir=args.log_dir,
+                                train_bs=args.train_bs,
+                                val_bs=args.validation_bs)
+
+            val_acc = np.array(metrics['val_accuracy']).mean()
+            val_loss = np.array(metrics['val_loss']).mean()
+            train_acc = np.array(metrics['accuracy']).mean()
+            train_loss =  np.array(metrics['loss']).mean()
+            
+            print('')
+            print('*'*75)
+            print(f'\t\t Results for Fold {fold}')
+            print('-'*75)
+
+            print(f'> Train Acc : \t{train_acc} \t| Valid Acc : {val_acc}')
+            print(f'> Train logloss : {train_loss} \t| Valid logloss : {val_loss}')
+            print('-'*75)
+            print(f'\t\t Results for Fold {fold}')
+            print('*'*75)
+
+            if val_acc > best_acc:
+                best_acc = val_acc
+                best_fold = fold
+                avg_acc += val_acc
+            
+
+            del model
+
+        print()    
+        print(f'[INFO] Training done ! \n(CV-LB) Avg Acc : {avg_acc / args.n_folds}')
+        print(f'[INFO] Best fold : {best_fold}')
+        print(f'[INFO] Best Accuracy : {best_acc}')
+
+    else:
+        model = create_model(show_summary=True, lr=args.lr, manifest_dir=args.ckpt_dir, arch=args.arch)
 
         print('')
         print('*'*18)
-        print(f'Training on fold {fold}')
+        print(f'  Training ')
         print('*'*18)
-        metrics = run_fold(fold_num=fold, 
+        metrics = run_fold(fold_num=args.n_folds, 
                             model=model,
                             dataset = dataset,
                             save_ckpt_to=args.ckpt_dir,
@@ -81,27 +129,21 @@ def train_fn(args):
         
         print('')
         print('*'*75)
-        print(f'\t\t Results for Fold {fold}')
+        print(f'\t\t Results at the end')
         print('-'*75)
 
         print(f'> Train Acc : \t{train_acc} \t| Valid Acc : {val_acc}')
         print(f'> Train logloss : {train_loss} \t| Valid logloss : {val_loss}')
         print('-'*75)
-        print(f'\t\t Results for Fold {fold}')
+        print(f'\t\t Results ')
         print('*'*75)
+
         if val_acc > best_acc:
             best_acc = val_acc
-            best_fold = fold
             avg_acc += val_acc
-        else:
-            avg_acc = val_acc
+        
 
         del model
-
-    print()    
-    print(f'[INFO] Training done ! \n(CV-LB) Avg Acc : {avg_acc / args.n_folds}')
-    print(f'[INFO] Best fold : {best_fold}')
-
 
 
 
